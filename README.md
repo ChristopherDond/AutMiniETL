@@ -1,5 +1,7 @@
 # AutMiniETL
 
+[Leia em Português (Brasil)](README-pt-br.md)
+
 AutMiniETL is a mini ETL platform in Python that:
 
 - Collects data (API, scraping, or local mock)

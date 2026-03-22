@@ -9,11 +9,27 @@ from autminietl.config import SETTINGS
 st.set_page_config(page_title="AutMiniETL Dashboard", layout="wide")
 st.title("AutMiniETL Dashboard")
 
-engine = create_engine(SETTINGS.database_url, future=True)
 
-runs_df = pd.read_sql("SELECT * FROM etl_runs ORDER BY started_at DESC", con=engine)
-versions_df = pd.read_sql("SELECT * FROM dataset_versions ORDER BY created_at DESC", con=engine)
-records_df = pd.read_sql("SELECT * FROM records", con=engine)
+@st.cache_resource
+def get_engine():
+    return create_engine(SETTINGS.database_url, future=True)
+
+
+@st.cache_data(ttl=30)
+def load_dataframes():
+    engine = get_engine()
+    runs = pd.read_sql("SELECT * FROM etl_runs ORDER BY started_at DESC", con=engine)
+    versions = pd.read_sql("SELECT * FROM dataset_versions ORDER BY created_at DESC", con=engine)
+    records = pd.read_sql("SELECT * FROM records", con=engine)
+    return runs, versions, records
+
+
+if st.button("Refresh data"):
+    load_dataframes.clear()
+    st.rerun()
+
+
+runs_df, versions_df, records_df = load_dataframes()
 
 col1, col2, col3 = st.columns(3)
 col1.metric("Runs", len(runs_df))

@@ -8,7 +8,7 @@ from sqlalchemy import insert, update
 
 from autminietl.collect import collect
 from autminietl.db import etl_runs, get_engine, init_db
-from autminietl.load import load_records, upsert_dataset_version
+from autminietl.load import has_records_for_version, load_records, upsert_dataset_version
 from autminietl.logger import configure_logging
 from autminietl.report import generate_reports
 from autminietl.transform import transform
@@ -37,8 +37,12 @@ def run_pipeline(source: str) -> dict:
         logger.info("Starting run=%s source=%s", run_id, source)
         raw_df = collect(source)
         transformed_df = transform(raw_df)
-        version_id = upsert_dataset_version(engine, transformed_df, source)
-        rows_loaded = load_records(engine, transformed_df, version_id)
+        version_id, is_new_version = upsert_dataset_version(engine, transformed_df, source)
+        if is_new_version or not has_records_for_version(engine, version_id):
+            rows_loaded = load_records(engine, transformed_df, version_id)
+        else:
+            rows_loaded = 0
+            logger.info("Skipping load for existing version_id=%s (already loaded)", version_id)
         csv_path, summary_path = generate_reports(transformed_df, run_id, source)
 
         ended_at = datetime.now(timezone.utc)
